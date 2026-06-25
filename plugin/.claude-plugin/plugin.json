@@ -1,0 +1,13 @@
+{
+  "name": "dd-web-eyes",
+  "version": "0.1.0",
+  "description": "Gives Claude Code eyes on a Chrome tab — screenshot, text and DOM — to discuss a site together. Auto-launches Chrome on a dedicated debug profile.",
+  "author": {
+    "name": "Diego Dias",
+    "email": "diegodias@camorim.com.br"
+  },
+  "homepage": "https://github.com/Pkdiego/web-eyes",
+  "repository": "https://github.com/Pkdiego/web-eyes",
+  "license": "MIT",
+  "keywords": ["mcp", "browser", "chrome", "screenshot", "dom", "playwright"]
+}

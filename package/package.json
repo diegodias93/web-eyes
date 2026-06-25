@@ -1,0 +1,42 @@
+{
+  "name": "@diegodias93/web-eyes",
+  "version": "0.1.0",
+  "description": "MCP server that gives Claude Code eyes on a Chrome tab — screenshot, text and DOM.",
+  "type": "module",
+  "bin": {
+    "web-eyes": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Pkdiego/web-eyes.git"
+  },
+  "keywords": [
+    "mcp",
+    "claude-code",
+    "browser",
+    "chrome",
+    "screenshot",
+    "dom",
+    "playwright"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "playwright-core": "^1.61.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}

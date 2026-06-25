@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "web-eyes": {
+      "command": "npx",
+      "args": ["-y", "@diegodias93/web-eyes@latest"]
+    }
+  }
+}
