@@ -9,7 +9,7 @@ Give Claude Code **eyes on your Chrome tab** — screenshot, text and DOM — so
 ## Install (plugin, with on/off switch)
 
 ```
-/plugin marketplace add Pkdiego/web-eyes
+/plugin marketplace add diegodias93/web-eyes
 /plugin
 ```
 

@@ -6,8 +6,8 @@
     "name": "Diego Dias",
     "email": "diegodias@camorim.com.br"
   },
-  "homepage": "https://github.com/Pkdiego/web-eyes",
-  "repository": "https://github.com/Pkdiego/web-eyes",
+  "homepage": "https://github.com/diegodias93/web-eyes",
+  "repository": "https://github.com/diegodias93/web-eyes",
   "license": "MIT",
   "keywords": ["mcp", "browser", "chrome", "screenshot", "dom", "playwright"]
 }
