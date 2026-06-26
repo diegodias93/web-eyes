@@ -1,4 +1,4 @@
-import { getActivePage } from "../browser.js";
+import { withActivePage } from "../browser.js";
 
 export const screenshotTool = {
   name: "capture_screenshot",
@@ -12,15 +12,16 @@ export const screenshotTool = {
 };
 
 export async function runScreenshot() {
-  const page = await getActivePage();
-  const buffer = await page.screenshot({ type: "png" });
-  return {
-    content: [
-      {
-        type: "image" as const,
-        data: buffer.toString("base64"),
-        mimeType: "image/png",
-      },
-    ],
-  };
+  return withActivePage(async (page) => {
+    const buffer = await page.screenshot({ type: "png" });
+    return {
+      content: [
+        {
+          type: "image" as const,
+          data: buffer.toString("base64"),
+          mimeType: "image/png",
+        },
+      ],
+    };
+  });
 }

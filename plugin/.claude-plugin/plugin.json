@@ -1,7 +1,7 @@
 {
   "name": "dd-web-eyes",
-  "version": "0.1.0",
-  "description": "Gives Claude Code eyes on a Chrome tab — screenshot, text and DOM — to discuss a site together. Auto-launches Chrome on a dedicated debug profile.",
+  "version": "1.0.0",
+  "description": "Gives Claude Code eyes on a Chrome tab — read clean text, screenshot, or DOM — to discuss a site together. Includes a hands-free watch mode with clickable buttons in the page. Auto-launches Chrome on a dedicated debug profile.",
   "author": {
     "name": "Diego Dias",
     "email": "diegodias@camorim.com.br"

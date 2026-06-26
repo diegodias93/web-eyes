@@ -8,7 +8,7 @@
     {
       "name": "dd-web-eyes",
       "source": "./plugin",
-      "description": "Gives Claude Code eyes on a Chrome tab — screenshot, text and DOM."
+      "description": "Gives Claude Code eyes on a Chrome tab — clean text, screenshot, or DOM, plus a hands-free watch mode."
     }
   ]
 }

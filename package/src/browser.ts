@@ -1,5 +1,6 @@
-import { chromium, type Page } from "playwright-core";
+import { chromium, type Browser, type Page } from "playwright-core";
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 
 const CDP_HOST = "localhost";
 const CDP_PORT = 9222;
@@ -11,38 +12,94 @@ const USER_DATA_DIR = "C:\\tmp\\chrome-debug";
 const CHROME_PATH = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 
 /**
- * Connects to the Chrome the user already has open (via the remote debugging port)
- * and returns the focused tab. Never opens its own Chromium — uses the real logins.
+ * Makes sure the debug Chrome is running: if the port is cold, launches it
+ * (flag + dedicated profile) and waits for it to come up. Returns true if it
+ * had to launch a new one, false if it was already running.
+ */
+export async function ensureChrome(): Promise<boolean> {
+  if (await isDebugPortUp()) return false;
+  launchChrome();
+  await waitForDebugPort();
+  return true;
+}
+
+/**
+ * Ensures Chrome is up, then connects over CDP and returns the live Browser.
+ * Caller is responsible for closing it (or keeping it open for a watch loop).
+ */
+export async function connectBrowser() {
+  await ensureChrome();
+  return chromium.connectOverCDP(CDP_ENDPOINT);
+}
+
+/** Picks the focused tab among a browser's open pages (active-tab heuristic). */
+export async function pickActivePage(browser: Browser): Promise<Page> {
+  const pages = browser
+    .contexts()
+    .flatMap((ctx) => ctx.pages())
+    .filter((p) => !p.isClosed());
+  if (pages.length === 0) {
+    throw new Error(
+      "Connected to Chrome, but it has no open tabs. " +
+        "Open a tab and navigate to a page, then try again."
+    );
+  }
+  // Active tab = first "page" in CDP's /json/list (most-recently-used order; the
+  // DOM's visibilityState/hasFocus are unreliable over CDP). Match by URL first
+  // (cheap); fall back to targetId when URLs are ambiguous or don't match (e.g.
+  // chrome:// pages, whose URL differs between CDP and Playwright).
+  const active = await getActiveTarget();
+  if (active) {
+    const sameUrl = pages.filter((p) => p.url() === active.url);
+    if (sameUrl.length === 1) return sameUrl[0];
+    const candidates = sameUrl.length > 1 ? sameUrl : pages;
+    for (const page of candidates) {
+      if ((await getTargetId(page)) === active.id) return page;
+    }
+  }
+  return pages[0];
+}
+
+/**
+ * Connects to the user's Chrome, runs `fn` against the focused tab, then closes
+ * the CDP connection — so each capture doesn't leak a websocket. (close() on a
+ * connectOverCDP browser only DISCONNECTS; it never closes the user's Chrome.)
  *
  * If no Chrome is listening on the debug port, it launches one automatically
  * (with the flag + the dedicated profile) and waits for it to come up.
  */
-export async function getActivePage(): Promise<Page> {
-  if (!(await isDebugPortUp())) {
-    await launchChrome();
-    await waitForDebugPort();
+export async function withActivePage<T>(fn: (page: Page) => Promise<T>): Promise<T> {
+  const browser = await connectBrowser();
+  try {
+    const page = await pickActivePage(browser);
+    return await fn(page);
+  } finally {
+    await browser.close().catch(() => {});
   }
+}
 
-  const browser = await chromium.connectOverCDP(CDP_ENDPOINT);
-  const contexts = browser.contexts();
-  const pages = contexts.flatMap((ctx) => ctx.pages()).filter((p) => !p.isClosed());
-  if (pages.length === 0) {
-    throw new Error("Chrome is connected, but there are no open tabs.");
+/** First "page" target from CDP's /json/list (most-recently-used first). */
+async function getActiveTarget(): Promise<{ id: string; url: string } | null> {
+  try {
+    const res = await fetch(`${CDP_ENDPOINT}/json/list`);
+    const targets = (await res.json()) as Array<{ type: string; id: string; url: string }>;
+    const page = targets.find((t) => t.type === "page");
+    return page ? { id: page.id, url: page.url } : null;
+  } catch {
+    return null;
   }
+}
 
-  // The foreground tab is the one Chrome reports as visible. Ask each page for its
-  // document.visibilityState and pick the first "visible" one.
-  for (const page of pages) {
-    try {
-      const isVisible = await page.evaluate(() => document.visibilityState === "visible");
-      if (isVisible) return page;
-    } catch {
-      // page without an evaluable JS context (e.g. chrome://) — skip it
-    }
+/** The CDP targetId backing a Playwright page (matches /json/list ids). */
+async function getTargetId(page: Page): Promise<string | null> {
+  try {
+    const session = await page.context().newCDPSession(page);
+    const info = await session.send("Target.getTargetInfo");
+    await session.detach();
+    return info.targetInfo.targetId;
+  } catch {
+    return null;
   }
-
-  // No visible tab (e.g. window minimized): fall back to the last known one.
-  return pages[pages.length - 1];
 }
 
 async function isDebugPortUp(): Promise<boolean> {
@@ -54,28 +111,21 @@ async function isDebugPortUp(): Promise<boolean> {
   }
 }
 
-function launchChrome(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    try {
-      const child = spawn(
-        CHROME_PATH,
-        [`--remote-debugging-port=${CDP_PORT}`, `--user-data-dir=${USER_DATA_DIR}`],
-        { detached: true, stdio: "ignore" }
-      );
-      child.on("error", () =>
-        reject(
-          new Error(
-            `Couldn't launch Chrome at "${CHROME_PATH}". ` +
-              "Check the path or open Chrome manually with --remote-debugging-port=9222 (see README)."
-          )
-        )
-      );
-      child.unref();
-      resolve();
-    } catch {
-      reject(new Error(`Couldn't launch Chrome at "${CHROME_PATH}".`));
-    }
-  });
+function launchChrome(): void {
+  // Check the path up front: spawn's "error" event is async on Windows and races
+  // with the caller, so it can't be relied on to surface a bad path.
+  if (!existsSync(CHROME_PATH)) {
+    throw new Error(
+      `Couldn't find Chrome at "${CHROME_PATH}". ` +
+        "Edit CHROME_PATH, or open Chrome manually with --remote-debugging-port=9222 (see README)."
+    );
+  }
+  const child = spawn(
+    CHROME_PATH,
+    [`--remote-debugging-port=${CDP_PORT}`, `--user-data-dir=${USER_DATA_DIR}`],
+    { detached: true, stdio: "ignore" }
+  );
+  child.unref();
 }
 
 async function waitForDebugPort(timeoutMs = 15000): Promise<void> {
@@ -84,5 +134,9 @@ async function waitForDebugPort(timeoutMs = 15000): Promise<void> {
     if (await isDebugPortUp()) return;
     await new Promise((r) => setTimeout(r, 300));
   }
-  throw new Error("Chrome was launched but the debug port never came up within 15s.");
+  throw new Error(
+    `Chrome was launched but debug port ${CDP_PORT} never responded within 15s. ` +
+      "This usually means another Chrome was already running and ignored the debug flag. " +
+      "Close all Chrome windows (including background ones) and try again."
+  );
 }

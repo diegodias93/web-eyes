@@ -1,4 +1,4 @@
-import { getActivePage } from "../browser.js";
+import { withActivePage } from "../browser.js";
 
 export const domTool = {
   name: "capture_dom",
@@ -12,15 +12,16 @@ export const domTool = {
 };
 
 export async function runDom() {
-  const page = await getActivePage();
-  const url = page.url();
-  const html = await page.content();
-  return {
-    content: [
-      {
-        type: "text" as const,
-        text: `URL: ${url}\n\n${html}`,
-      },
-    ],
-  };
+  return withActivePage(async (page) => {
+    const url = page.url();
+    const html = await page.content();
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `URL: ${url}\n\n${html}`,
+        },
+      ],
+    };
+  });
 }
