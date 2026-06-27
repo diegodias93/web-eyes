@@ -1,6 +1,6 @@
 {
   "name": "@diegodias93/web-eyes",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server that gives Claude Code eyes on a Chrome tab — read clean text, screenshot, or DOM. Includes a hands-free watch mode with clickable buttons in the page.",
   "type": "module",
   "bin": {
@@ -13,6 +13,10 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "prepublishOnly": "npm run build"
+  },
+  "author": {
+    "name": "Diego Dias",
+    "url": "https://www.newlevel.com.br"
   },
   "repository": {
     "type": "git",

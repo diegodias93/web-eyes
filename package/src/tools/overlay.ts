@@ -20,13 +20,8 @@ function buildOverlay(id: string, binding: string) {
   host.style.cssText = "position:fixed;bottom:16px;left:16px;z-index:2147483647;";
   const shadow = host.attachShadow({ mode: "open" });
 
-  // Load Plus Jakarta Sans inside the Shadow DOM (with a sans-serif fallback if
-  // the network/font is unavailable).
-  const font = document.createElement("link");
-  font.rel = "stylesheet";
-  font.href =
-    "https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700&display=swap";
-  shadow.appendChild(font);
+  // System font stack — no external font request, so nothing leaves the machine.
+  const FONT = "system-ui,-apple-system,'Segoe UI',Roboto,sans-serif";
 
   const wrap = document.createElement("div");
   wrap.style.cssText =
@@ -41,7 +36,7 @@ function buildOverlay(id: string, binding: string) {
     b.textContent = label;
     b.style.cssText =
       "cursor:pointer;border-radius:8px;padding:8px 16px;min-width:78px;" +
-      "font-family:'Plus Jakarta Sans',sans-serif;font-size:16px;font-weight:700;" +
+      "font-family:" + FONT + ";font-size:16px;font-weight:700;" +
       "line-height:1;text-align:center;" +
       `color:${opts.fg};background:${opts.bg};border:1px solid ${opts.border};`;
     b.onclick = () => {

@@ -1,10 +1,10 @@
 {
-  "name": "dd-web-eyes",
-  "version": "1.0.0",
-  "description": "Gives Claude Code eyes on a Chrome tab — read clean text, screenshot, or DOM — to discuss a site together. Includes a hands-free watch mode with clickable buttons in the page. Auto-launches Chrome on a dedicated debug profile.",
+  "name": "web-eyes",
+  "version": "1.0.1",
+  "description": "Gives Claude Code eyes on a Chrome tab: read clean text, screenshot, or DOM to discuss a site together. Includes a hands-free watch mode with clickable buttons in the page. Auto-launches Chrome on a dedicated debug profile.",
   "author": {
     "name": "Diego Dias",
-    "email": "diegodias@camorim.com.br"
+    "url": "https://www.newlevel.com.br"
   },
   "homepage": "https://github.com/diegodias93/web-eyes",
   "repository": "https://github.com/diegodias93/web-eyes",

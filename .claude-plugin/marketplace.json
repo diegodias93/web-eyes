@@ -1,14 +1,14 @@
 {
-  "name": "diegodias93",
+  "name": "newlevel",
   "owner": {
     "name": "Diego Dias",
-    "email": "diegodias@camorim.com.br"
+    "url": "https://www.newlevel.com.br"
   },
   "plugins": [
     {
-      "name": "dd-web-eyes",
+      "name": "web-eyes",
       "source": "./plugin",
-      "description": "Gives Claude Code eyes on a Chrome tab — clean text, screenshot, or DOM, plus a hands-free watch mode."
+      "description": "Gives Claude Code eyes on a Chrome tab: clean text, screenshot, or DOM, plus a hands-free watch mode."
     }
   ]
 }
