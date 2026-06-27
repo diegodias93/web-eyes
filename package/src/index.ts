@@ -49,7 +49,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
           }).catch(() => {});
         }
       };
-      return await runWatch(heartbeat);
+      return await runWatch(heartbeat, extra.signal);
     }
 
     const handler = handlers[name];

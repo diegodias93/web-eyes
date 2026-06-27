@@ -2,6 +2,12 @@ import type { Page } from "playwright-core";
 
 export type WatchAction = "text" | "image" | "dom" | "stop";
 
+// The overlay sends one of two events through the binding: a button action, or a
+// typed message (so the user can talk without leaving listen mode).
+export type WatchEvent =
+  | { kind: "action"; action: WatchAction }
+  | { kind: "message"; text: string };
+
 const OVERLAY_ID = "__webeyes_overlay";
 const CLICK_BINDING = "__webEyesClick";
 
@@ -23,26 +29,109 @@ function buildOverlay(id: string, binding: string) {
   // System font stack — no external font request, so nothing leaves the machine.
   const FONT = "system-ui,-apple-system,'Segoe UI',Roboto,sans-serif";
 
-  const wrap = document.createElement("div");
-  wrap.style.cssText =
-    "display:flex;gap:8px;align-items:center;" +
+  // Pulsing "…" appended to the clicked button while Claude is looking. Keyframes
+  // live in the Shadow DOM so the site's CSS can neither see nor break them.
+  const style = document.createElement("style");
+  style.textContent =
+    "@keyframes __we_blink{0%,100%{opacity:.25}50%{opacity:1}}" +
+    ".__we_dots{display:inline-block;animation:__we_blink 1s ease-in-out infinite}";
+  shadow.appendChild(style);
+
+  // Fires an event through the binding (CDP channel, not network → no CSP issues).
+  const send = (payload: unknown) => {
+    const fn = (window as any)[binding];
+    if (fn) fn(payload);
+  };
+
+  // Outer column: message row on top, button row below.
+  const col = document.createElement("div");
+  col.style.cssText =
+    "display:flex;flex-direction:column;gap:8px;" +
     "background:#000;padding:8px;border-radius:10px;border:1px solid #333;" +
     "box-shadow:0 4px 16px rgba(0,0,0,.5);";
 
-  // Vercel-style: monochrome buttons, dark surface with a subtle border. The Stop
-  // button is the only colored one (red), so it stands out.
+  // Shared button look, so Send matches Text/Image/Dom/Stop exactly.
+  const BTN =
+    "cursor:pointer;border-radius:8px;padding:8px 16px;min-width:78px;" +
+    "font-family:" + FONT + ";font-size:16px;font-weight:700;" +
+    "line-height:1;text-align:center;box-sizing:border-box;";
+
+  // Message box (with its own drag handle) on its own row, full width. Send lives
+  // in the button row below (as an icon), so it always lines up with Text/Image/
+  // Dom/Stop regardless of how tall the box is.
+  const boxCol = document.createElement("div");
+  boxCol.style.cssText = "display:flex;flex-direction:column;min-width:280px;";
+
+  const handle = document.createElement("div");
+  handle.title = "Drag to resize";
+  handle.style.cssText =
+    "height:14px;cursor:ns-resize;display:flex;align-items:center;justify-content:center;" +
+    "color:#666;font-size:12px;line-height:1;user-select:none;";
+  handle.textContent = "⠿"; // grip dots
+  // Drag to resize: grow/shrink the box as the pointer moves. Listeners are on
+  // the document so the drag keeps working past the handle's edges; stopPropagation
+  // so the site never sees these events.
+  const MIN_H = 64;
+  handle.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startY = e.clientY;
+    const startH = input.offsetHeight;
+    const maxH = Math.max(MIN_H, window.innerHeight - 120);
+    const onMove = (m: MouseEvent) => {
+      m.stopPropagation();
+      const next = Math.min(maxH, Math.max(MIN_H, startH + (startY - m.clientY)));
+      input.style.height = next + "px";
+    };
+    const onUp = (u: MouseEvent) => {
+      u.stopPropagation();
+      document.removeEventListener("mousemove", onMove, true);
+      document.removeEventListener("mouseup", onUp, true);
+    };
+    document.addEventListener("mousemove", onMove, true);
+    document.addEventListener("mouseup", onUp, true);
+  });
+
+  const input = document.createElement("textarea");
+  input.placeholder = "Message Claude… (Enter to send, Shift+Enter for newline)";
+  input.style.cssText =
+    "width:100%;height:64px;resize:none;box-sizing:border-box;" +
+    "font-family:" + FONT + ";font-size:14px;line-height:1.3;" +
+    "padding:8px 10px;border-radius:8px;border:1px solid #333;" +
+    "background:#111;color:#fff;outline:none;";
+  // Keep the user's keystrokes inside the box — don't let the site's shortcuts
+  // (e.g. "/" to focus search) hijack them.
+  const submit = () => {
+    const text = input.value.trim();
+    if (text) {
+      send({ kind: "message", text });
+      input.value = "";
+    }
+  };
+  input.addEventListener("keydown", (e) => {
+    e.stopPropagation();
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      submit();
+    }
+  });
+
+  boxCol.appendChild(handle);
+  boxCol.appendChild(input);
+
+  // Button row. Vercel-style: monochrome buttons, dark surface with a subtle
+  // border. The Stop button is the only colored one (red), so it stands out.
+  const wrap = document.createElement("div");
+  wrap.style.cssText = "display:flex;gap:8px;align-items:center;";
+
   const mkBtn = (label: string, action: string, opts: { bg: string; fg: string; border: string }) => {
     const b = document.createElement("button");
     b.textContent = label;
+    b.dataset.label = label; // remembered so the "…" state can be reverted
+    b.dataset.action = action;
     b.style.cssText =
-      "cursor:pointer;border-radius:8px;padding:8px 16px;min-width:78px;" +
-      "font-family:" + FONT + ";font-size:16px;font-weight:700;" +
-      "line-height:1;text-align:center;" +
-      `color:${opts.fg};background:${opts.bg};border:1px solid ${opts.border};`;
-    b.onclick = () => {
-      const fn = (window as any)[binding];
-      if (fn) fn(action);
-    };
+      BTN + `color:${opts.fg};background:${opts.bg};border:1px solid ${opts.border};`;
+    b.onclick = () => send({ kind: "action", action });
     return b;
   };
 
@@ -53,8 +142,45 @@ function buildOverlay(id: string, binding: string) {
   wrap.appendChild(mkBtn("Dom", "dom", mono));
   wrap.appendChild(mkBtn("Stop", "stop", red));
 
-  shadow.appendChild(wrap);
+  // Send as an icon, in the button row after Stop — so it always lines up with
+  // the other buttons no matter how tall the message box is.
+  const sendBtn = document.createElement("button");
+  sendBtn.title = "Send message";
+  sendBtn.setAttribute("aria-label", "Send message");
+  sendBtn.textContent = "➤";
+  sendBtn.style.cssText = BTN + "min-width:48px;color:#fff;background:#111;border:1px solid #333;";
+  sendBtn.onclick = submit;
+  wrap.appendChild(sendBtn);
+
+  col.appendChild(boxCol);
+  col.appendChild(wrap);
+  shadow.appendChild(col);
   document.documentElement.appendChild(host);
+}
+
+/**
+ * Toggles the "capturing" state on the overlay of a page: the button for
+ * `action` shows a pulsing "…" and the others dim/disable, so the user sees
+ * Claude is looking. Passing null restores all buttons to idle. Runs in the
+ * browser; self-contained (no external deps) so it ships as a string.
+ */
+function setOverlayBusy(id: string, action: string | null) {
+  const host = document.getElementById(id);
+  const shadow = host && (host as any).shadowRoot;
+  if (!shadow) return;
+  const buttons = shadow.querySelectorAll("button");
+  buttons.forEach((b: HTMLButtonElement) => {
+    const isActive = b.dataset.action === action;
+    if (action && isActive) {
+      b.innerHTML = b.dataset.label + '<span class="__we_dots">…</span>';
+    } else {
+      b.textContent = b.dataset.label || b.textContent;
+    }
+    // While busy, dim and disable every button except the one being captured.
+    const dim = action && !isActive;
+    b.disabled = !!dim;
+    b.style.opacity = dim ? "0.4" : "1";
+  });
 }
 
 /** Injects the overlay into a page that's already open. */
@@ -75,6 +201,34 @@ export function overlayInitScript(): string {
 export async function removeOverlay(page: Page): Promise<void> {
   await page
     .evaluate((id) => document.getElementById(id)?.remove(), OVERLAY_ID)
+    .catch(() => {});
+}
+
+/**
+ * Shows the "capturing…" state on a page's overlay (pulsing "…" on the clicked
+ * button), or clears it back to idle when `action` is null. We inline
+ * setOverlayBusy's source (like overlayInitScript) so it runs in the page with
+ * no external deps.
+ */
+export async function setOverlayBusyOn(page: Page, action: WatchAction | null): Promise<void> {
+  const script = `(${setOverlayBusy.toString()})(${JSON.stringify(OVERLAY_ID)}, ${JSON.stringify(action)});`;
+  await page.evaluate(script).catch(() => {});
+}
+
+/**
+ * Hides or shows a page's overlay (visibility:hidden, not removal — keeping it in
+ * the DOM means the sweep won't re-inject a fresh one). Used to keep the overlay
+ * out of captures: it's the user's control surface, not page content.
+ */
+export async function setOverlayHiddenOn(page: Page, hidden: boolean): Promise<void> {
+  await page
+    .evaluate(
+      ([id, h]) => {
+        const host = document.getElementById(id as string);
+        if (host) host.style.visibility = h ? "hidden" : "visible";
+      },
+      [OVERLAY_ID, hidden] as const
+    )
     .catch(() => {});
 }
 

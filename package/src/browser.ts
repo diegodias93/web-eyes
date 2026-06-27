@@ -32,6 +32,26 @@ export async function connectBrowser() {
   return chromium.connectOverCDP(CDP_ENDPOINT);
 }
 
+// A single CDP connection reused across watch re-arms. The watch loop re-enters
+// many times (once per click); reconnecting each time both costs latency and
+// drops the overlay between cycles. We hold one connection open for the whole
+// loop and only close it on stop (see closeSharedBrowser).
+let shared: Browser | null = null;
+
+/** The shared connection for the watch loop, connecting (or reconnecting) lazily. */
+export async function sharedBrowser(): Promise<Browser> {
+  if (shared && shared.isConnected()) return shared;
+  shared = await connectBrowser();
+  return shared;
+}
+
+/** Disconnects the shared watch connection (does NOT close the user's Chrome). */
+export async function closeSharedBrowser(): Promise<void> {
+  const b = shared;
+  shared = null;
+  await b?.close().catch(() => {});
+}
+
 /** Picks the focused tab among a browser's open pages (active-tab heuristic). */
 export async function pickActivePage(browser: Browser): Promise<Page> {
   const pages = browser
