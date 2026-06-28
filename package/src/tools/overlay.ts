@@ -3,9 +3,11 @@ import type { Page } from "playwright-core";
 export type WatchAction = "text" | "image" | "dom" | "stop";
 
 // The overlay sends one of two events through the binding: a button action, or a
-// typed message (so the user can talk without leaving listen mode).
+// typed message (so the user can talk without leaving listen mode). A capture
+// action may also carry the text that was in the box, so the user can type a
+// message AND capture in one go (e.g. "explain this" + Image).
 export type WatchEvent =
-  | { kind: "action"; action: WatchAction }
+  | { kind: "action"; action: WatchAction; text?: string }
   | { kind: "message"; text: string };
 
 const OVERLAY_ID = "__webeyes_overlay";
@@ -29,7 +31,15 @@ function buildOverlay(id: string, binding: string) {
 
   const host = document.createElement("div");
   host.id = id;
-  host.style.cssText = "position:fixed;bottom:16px;left:16px;z-index:2147483647;";
+  // Anchored by top/left (in px) rather than bottom/left so the right-drag below
+  // can reposition it freely. Start at the same lower-left spot as before.
+  host.style.cssText =
+    "position:fixed;left:16px;top:" +
+    Math.max(16, window.innerHeight - 240) +
+    "px;z-index:2147483647;";
+  // Right-click anywhere on the overlay shouldn't pop the browser's context menu
+  // (the right-drag below uses the right button to move the panel).
+  host.addEventListener("contextmenu", (e) => e.preventDefault());
   const shadow = host.attachShadow({ mode: "open" });
 
   // System font stack — no external font request, so nothing leaves the machine.
@@ -69,25 +79,41 @@ function buildOverlay(id: string, binding: string) {
   boxCol.style.cssText = "display:flex;flex-direction:column;min-width:280px;";
 
   const handle = document.createElement("div");
-  handle.title = "Drag to resize";
+  handle.title = "Drag to resize · right-drag to move";
   handle.style.cssText =
     "height:14px;cursor:ns-resize;display:flex;align-items:center;justify-content:center;" +
     "color:#666;font-size:12px;line-height:1;user-select:none;";
   handle.textContent = "⠿"; // grip dots
-  // Drag to resize: grow/shrink the box as the pointer moves. Listeners are on
-  // the document so the drag keeps working past the handle's edges; stopPropagation
-  // so the site never sees these events.
+  // Two drags from the same handle, told apart by mouse button:
+  //  - left (button 0): resize — grow/shrink the message box vertically;
+  //  - right (button 2): move — reposition the whole overlay on screen.
+  // Listeners go on the document so the drag keeps working past the handle's
+  // edges; stopPropagation so the site never sees these events.
   const MIN_H = 64;
   handle.addEventListener("mousedown", (e) => {
     e.preventDefault();
     e.stopPropagation();
+    const right = e.button === 2;
+    const startX = e.clientX;
     const startY = e.clientY;
     const startH = input.offsetHeight;
+    const startLeft = host.offsetLeft;
+    const startTop = host.offsetTop;
     const maxH = Math.max(MIN_H, window.innerHeight - 120);
     const onMove = (m: MouseEvent) => {
       m.stopPropagation();
-      const next = Math.min(maxH, Math.max(MIN_H, startH + (startY - m.clientY)));
-      input.style.height = next + "px";
+      if (right) {
+        // Move the panel, clamped so it can't be dragged off-screen.
+        const maxLeft = Math.max(0, window.innerWidth - host.offsetWidth);
+        const maxTop = Math.max(0, window.innerHeight - host.offsetHeight);
+        host.style.left =
+          Math.min(maxLeft, Math.max(0, startLeft + (m.clientX - startX))) + "px";
+        host.style.top =
+          Math.min(maxTop, Math.max(0, startTop + (m.clientY - startY))) + "px";
+      } else {
+        const next = Math.min(maxH, Math.max(MIN_H, startH + (startY - m.clientY)));
+        input.style.height = next + "px";
+      }
     };
     const onUp = (u: MouseEvent) => {
       u.stopPropagation();
@@ -161,7 +187,14 @@ function buildOverlay(id: string, binding: string) {
     b.dataset.action = action;
     b.style.cssText =
       BTN + `color:${opts.fg};background:${opts.bg};border:1px solid ${opts.border};`;
-    b.onclick = () => send({ kind: "action", action });
+    b.onclick = () => {
+      // A capture click carries any text in the box (so the user can type a
+      // message AND capture in one go); the box is cleared once it's sent. Stop
+      // never carries text.
+      const text = action === "stop" ? "" : input.value.trim();
+      send({ kind: "action", action, ...(text ? { text } : {}) });
+      if (text) input.value = "";
+    };
     return b;
   };
 

@@ -201,6 +201,9 @@ export async function runWatch(onHeartbeat?: () => void, signal?: AbortSignal) {
   if (page) await setOverlayHiddenOn(page, false).catch(() => {});
   return {
     content: [
+      // The user may have typed a message alongside the capture — surface it
+      // first so Claude answers it and comments on what it sees.
+      ...(event.text ? [{ type: "text" as const, text: `WATCH_MSG: ${event.text}` }] : []),
       { type: "text" as const, text: `WATCH_CLICK: ${action}` },
       ...result.content,
     ],
