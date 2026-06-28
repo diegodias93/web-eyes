@@ -21,6 +21,12 @@ function buildOverlay(id: string, binding: string) {
   if (!document.documentElement) return;
   document.getElementById(id)?.remove();
 
+  // buildOverlay re-runs on every re-inject (sweep / navigation). The previous
+  // run left document-level key listeners behind (they close over the old host);
+  // remove them first so they don't pile up. We stash the cleanup on window.
+  const KEY = "__webEyesKeyCleanup";
+  (window as any)[KEY]?.();
+
   const host = document.createElement("div");
   host.id = id;
   host.style.cssText = "position:fixed;bottom:16px;left:16px;z-index:2147483647;";
@@ -99,8 +105,6 @@ function buildOverlay(id: string, binding: string) {
     "font-family:" + FONT + ";font-size:14px;line-height:1.3;" +
     "padding:8px 10px;border-radius:8px;border:1px solid #333;" +
     "background:#111;color:#fff;outline:none;";
-  // Keep the user's keystrokes inside the box — don't let the site's shortcuts
-  // (e.g. "/" to focus search) hijack them.
   const submit = () => {
     const text = input.value.trim();
     if (text) {
@@ -108,8 +112,34 @@ function buildOverlay(id: string, binding: string) {
       input.value = "";
     }
   };
+
+  // Stop the user's typing from ever reaching the site's keyboard shortcuts
+  // (Space pauses YouTube, "/" focuses search, j/k/l seek, etc.). The catch: the
+  // capture phase descends window → document → … → target, and sites register
+  // their shortcut listeners on `document` in capture, on page load — BEFORE our
+  // overlay exists. So intercepting on document (or inside the shadow) always
+  // loses: document sees the key first. Registering on `window` in capture wins,
+  // because window captures before document. We kill only keys from our overlay
+  // (shadow retargeting makes event.target the host). Verified with a preview
+  // simulating a YouTube-style document/capture listener.
+  const swallowKeys = (e: KeyboardEvent) => {
+    if (e.target === host) {
+      e.stopImmediatePropagation();
+      e.stopPropagation();
+    }
+  };
+  const keyTypes = ["keydown", "keyup", "keypress"] as const;
+  for (const type of keyTypes) {
+    window.addEventListener(type, swallowKeys, true); // window + capture = runs first
+  }
+  // Remembered so the next buildOverlay (re-inject) can detach these first.
+  (window as any)[KEY] = () => {
+    for (const type of keyTypes) window.removeEventListener(type, swallowKeys, true);
+  };
+
+  // Enter (without Shift) sends; Shift+Enter is a newline. preventDefault stops
+  // the textarea from inserting a line break on send.
   input.addEventListener("keydown", (e) => {
-    e.stopPropagation();
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       submit();
@@ -200,7 +230,12 @@ export function overlayInitScript(): string {
 /** Removes the overlay from a page (used when the watch stops). */
 export async function removeOverlay(page: Page): Promise<void> {
   await page
-    .evaluate((id) => document.getElementById(id)?.remove(), OVERLAY_ID)
+    .evaluate((id) => {
+      document.getElementById(id)?.remove();
+      // Also detach the document-level key listeners buildOverlay added.
+      (window as any)["__webEyesKeyCleanup"]?.();
+      (window as any)["__webEyesKeyCleanup"] = undefined;
+    }, OVERLAY_ID)
     .catch(() => {});
 }
 
