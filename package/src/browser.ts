@@ -1,6 +1,8 @@
 import { chromium, type Browser, type Page } from "playwright-core";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const CDP_HOST = "localhost";
 const CDP_PORT = 9222;
@@ -8,8 +10,37 @@ const CDP_ENDPOINT = `http://${CDP_HOST}:${CDP_PORT}`;
 
 // Dedicated debugging profile so it coexists with the user's everyday Chrome
 // (different profile = both can run at the same time, each with its own logins).
-const USER_DATA_DIR = "C:\\tmp\\chrome-debug";
-const CHROME_PATH = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
+// Lives under the OS temp dir so it's portable; override with WEB_EYES_PROFILE_DIR.
+const USER_DATA_DIR =
+  process.env.WEB_EYES_PROFILE_DIR || join(tmpdir(), "web-eyes-chrome-debug");
+
+// Per-platform locations of a stock Chrome install. WEB_EYES_CHROME_PATH wins,
+// for non-standard setups (portable Chrome, Brave, a different channel, etc.).
+function chromeCandidates(): string[] {
+  if (process.env.WEB_EYES_CHROME_PATH) return [process.env.WEB_EYES_CHROME_PATH];
+  if (process.platform === "win32") {
+    const dirs = [
+      process.env.PROGRAMFILES,
+      process.env["PROGRAMFILES(X86)"],
+      process.env.LOCALAPPDATA,
+    ].filter(Boolean) as string[];
+    return dirs.map((d) => join(d, "Google", "Chrome", "Application", "chrome.exe"));
+  }
+  if (process.platform === "darwin") {
+    return ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"];
+  }
+  return [
+    "/usr/bin/google-chrome",
+    "/usr/bin/google-chrome-stable",
+    "/usr/bin/chromium",
+    "/usr/bin/chromium-browser",
+  ];
+}
+
+/** First existing Chrome from the per-platform candidates, or null if none. */
+function resolveChromePath(): string | null {
+  return chromeCandidates().find((p) => existsSync(p)) ?? null;
+}
 
 /**
  * Makes sure the debug Chrome is running: if the port is cold, launches it
@@ -132,16 +163,18 @@ async function isDebugPortUp(): Promise<boolean> {
 }
 
 function launchChrome(): void {
-  // Check the path up front: spawn's "error" event is async on Windows and races
-  // with the caller, so it can't be relied on to surface a bad path.
-  if (!existsSync(CHROME_PATH)) {
+  // Resolve the path up front: spawn's "error" event is async on Windows and
+  // races with the caller, so it can't be relied on to surface a bad path.
+  const chromePath = resolveChromePath();
+  if (!chromePath) {
     throw new Error(
-      `Couldn't find Chrome at "${CHROME_PATH}". ` +
-        "Edit CHROME_PATH, or open Chrome manually with --remote-debugging-port=9222 (see README)."
+      "Couldn't find a Chrome install in the usual locations. " +
+        "Set WEB_EYES_CHROME_PATH to your Chrome binary, or open Chrome manually " +
+        "with --remote-debugging-port=9222 (see README)."
     );
   }
   const child = spawn(
-    CHROME_PATH,
+    chromePath,
     [`--remote-debugging-port=${CDP_PORT}`, `--user-data-dir=${USER_DATA_DIR}`],
     { detached: true, stdio: "ignore" }
   );
