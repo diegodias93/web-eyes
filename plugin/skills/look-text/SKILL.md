@@ -5,7 +5,7 @@ description: Reads the text of the focused Chrome tab so you can discuss the con
 
 # Look at text
 
-Reads the textual content of the focused Chrome tab and uses it as conversation context. The text comes cleaned (main content only, no menus/footer) plus the page's relevant links.
+Reads the textual content of the focused Chrome tab and uses it as conversation context. The text comes cleaned (main content only, no menus/footer) plus the page's relevant links. If the tab is a PDF, it extracts the PDF's text automatically.
 
 Steps:
 1. Call the MCP tool `capture_text` (from the `web-eyes` server).

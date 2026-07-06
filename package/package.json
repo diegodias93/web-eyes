@@ -1,6 +1,6 @@
 {
   "name": "@diegodias93/web-eyes",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "MCP server that gives Claude Code eyes on a Chrome tab — read clean text, screenshot, or DOM. Includes a hands-free watch mode with clickable buttons in the page.",
   "type": "module",
   "bin": {
@@ -38,6 +38,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
     "@mozilla/readability": "^0.5.0",
+    "pdfjs-dist": "^6.1.200",
     "playwright-core": "^1.61.1"
   },
   "devDependencies": {
