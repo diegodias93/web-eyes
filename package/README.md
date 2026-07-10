@@ -12,11 +12,23 @@ As a Claude Code plugin (recommended, adds an on/off switch and the trigger skil
 /plugin marketplace add diegodias93/web-eyes
 ```
 
-Or as an MCP server only:
+Or as an MCP server only. Install the package globally once, then point Claude Code at it with `node` directly:
 
 ```
-claude mcp add web-eyes -- npx -y @diegodias93/web-eyes@latest
+npm install -g @diegodias93/web-eyes
 ```
+
+macOS/Linux:
+```
+claude mcp add web-eyes -- node "$(npm root -g)/@diegodias93/web-eyes/dist/index.js"
+```
+
+Windows (PowerShell):
+```
+claude mcp add web-eyes -- node "$(npm root -g)\@diegodias93\web-eyes\dist\index.js"
+```
+
+> ⚠️ Why not `npx`? On Windows, Claude Code currently fails to start any MCP server configured with a bare `npx` command (`spawn ENOENT`) — a known Claude Code bug ([#58510](https://github.com/anthropics/claude-code/issues/58510)). Calling `node` with the resolved script path sidesteps it on every OS.
 
 Then navigate to a page in Chrome and tell Claude *"look at my tab"*. Chrome is launched automatically on a dedicated debug profile.
 

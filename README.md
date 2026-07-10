@@ -52,7 +52,7 @@ Web Eyes is built to stay out of your way and out of your data.
 - **You're in control.** Claude only sees a tab when you ask (or when you click a button in watch mode). It can't browse on its own.
 - **Open source.** The whole thing is auditable in this repo. No black box.
 
-The separate profile (`C:\tmp\chrome-debug`) also means it coexists with your normal Chrome: both can run at once, each with its own logins. On first use this debug profile is logged out, so log in once to whatever you need (e.g. your Meta developer account) and those logins stick around for next time.
+The separate profile (a dedicated `web-eyes-chrome-debug` folder under your OS temp directory) also means it coexists with your normal Chrome: both can run at once, each with its own logins. On first use this debug profile is logged out, so log in once to whatever you need (e.g. your Meta developer account) and those logins stick around for next time.
 
 ---
 
@@ -69,11 +69,23 @@ Turn on **web-eyes** in the list, restart Claude Code, and say *"look at my tab"
 
 ### As an MCP server only (no plugin UI)
 
+Install the package globally once, then point Claude Code at it with `node` directly (not `npx` — see note below):
+
 ```
-claude mcp add web-eyes -- npx -y @diegodias93/web-eyes@latest
+npm install -g @diegodias93/web-eyes
 ```
 
-> The first run downloads the package automatically (a few seconds). After that it's cached.
+macOS/Linux:
+```
+claude mcp add web-eyes -- node "$(npm root -g)/@diegodias93/web-eyes/dist/index.js"
+```
+
+Windows (PowerShell):
+```
+claude mcp add web-eyes -- node "$(npm root -g)\@diegodias93\web-eyes\dist\index.js"
+```
+
+> ⚠️ Why not `npx`? On Windows, Claude Code currently fails to start any MCP server configured with a bare `npx` command (`spawn ENOENT`) — this is a known Claude Code bug ([#58510](https://github.com/anthropics/claude-code/issues/58510)), not something Web Eyes can fix on its own. Calling `node` with the resolved script path sidesteps it entirely, on every OS. To update later, run `npm update -g @diegodias93/web-eyes`.
 
 ---
 
@@ -83,7 +95,7 @@ claude mcp add web-eyes -- npx -y @diegodias93/web-eyes@latest
 [your Chrome] --debug port 9222 (CDP)--> [Playwright] --> [MCP server] --stdio--> [Claude Code]
 ```
 
-Web Eyes opens a separate Chrome window on its own profile (`C:\tmp\chrome-debug`), with Chrome's debugging port enabled. It connects to that window to read whatever tab you have **in focus** (detected via CDP's most-recently-used target, not the DOM's unreliable `visibilityState`). It launches this Chrome automatically, so you don't run any command by hand.
+Web Eyes opens a separate Chrome window on its own profile (a `web-eyes-chrome-debug` folder under your OS temp directory, overridable with the `WEB_EYES_PROFILE_DIR` environment variable), with Chrome's debugging port enabled. It connects to that window to read whatever tab you have **in focus** (detected via CDP's most-recently-used target, not the DOM's unreliable `visibilityState`). It launches this Chrome automatically, so you don't run any command by hand.
 
 For text capture, it injects [Mozilla's Readability](https://github.com/mozilla/readability) into the page and runs it on a clone of the DOM, so the live page is never touched. Non-article pages (apps, dashboards) gracefully fall back to the raw body text.
 
@@ -100,8 +112,10 @@ web-eyes/
 
 ## Requirements
 
-- Node.js LTS
+- Node.js LTS, available on your system `PATH`.
 - Google Chrome
+
+> ⚠️ Just installed or updated Node? **Fully restart your terminal/editor** (or reboot) before using Web Eyes. Programs that were already running (like VS Code) captured the old `PATH` at startup and won't see Node until they restart. (This is separate from the `npx` bug noted above — this one's about Node not being found at all, not about how it's spawned.)
 
 ## Author
 

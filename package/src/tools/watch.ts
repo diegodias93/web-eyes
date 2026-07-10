@@ -11,13 +11,13 @@ import {
 } from "./overlay.js";
 import type { Page } from "playwright-core";
 import { runText } from "./text.js";
-import { runScreenshot } from "./screenshot.js";
+import { runScreenshot, runFullScreenshot } from "./screenshot.js";
 import { runDom } from "./dom.js";
 
 export const watchTool = {
   name: "watch",
   description:
-    "Enters listen mode: shows a message box + 4 buttons (text, image, dom, stop) in the Chrome tab " +
+    "Enters listen mode: shows a message box + 5 buttons (text, image, full, dom, stop) in the Chrome tab " +
     "and waits for the user to click a button or send a message. Returns the click or the message. " +
     "Used to drive the /look-watch loop.",
   inputSchema: {
@@ -196,7 +196,13 @@ export async function runWatch(onHeartbeat?: () => void, signal?: AbortSignal) {
   // the "…" feedback remains visible while Claude processes.
   if (page) await setOverlayHiddenOn(page, true).catch(() => {});
   const capture =
-    action === "text" ? runText : action === "image" ? runScreenshot : runDom;
+    action === "text"
+      ? runText
+      : action === "image"
+      ? runScreenshot
+      : action === "full"
+      ? runFullScreenshot
+      : runDom;
   const result = await capture();
   if (page) await setOverlayHiddenOn(page, false).catch(() => {});
   return {

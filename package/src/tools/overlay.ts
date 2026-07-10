@@ -1,6 +1,6 @@
 import type { Page } from "playwright-core";
 
-export type WatchAction = "text" | "image" | "dom" | "stop";
+export type WatchAction = "text" | "image" | "full" | "dom" | "stop";
 
 // The overlay sends one of two events through the binding: a button action, or a
 // typed message (so the user can talk without leaving listen mode). A capture
@@ -202,6 +202,7 @@ function buildOverlay(id: string, binding: string) {
   const red = { bg: "#e5484d", fg: "#fff", border: "#e5484d" };
   wrap.appendChild(mkBtn("Text", "text", mono));
   wrap.appendChild(mkBtn("Image", "image", mono));
+  wrap.appendChild(mkBtn("Full", "full", mono));
   wrap.appendChild(mkBtn("Dom", "dom", mono));
   wrap.appendChild(mkBtn("Stop", "stop", red));
 

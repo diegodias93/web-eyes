@@ -11,9 +11,29 @@ export const screenshotTool = {
   },
 };
 
-export async function runScreenshot() {
+export const fullScreenshotTool = {
+  name: "capture_full_screenshot",
+  description:
+    "Takes a full-page screenshot of the focused Chrome tab — the entire scrollable page, " +
+    "not just the visible viewport — and returns it as an image. " +
+    "Use when the whole page matters (long docs, articles); note tall pages produce large images.",
+  inputSchema: {
+    type: "object" as const,
+    properties: {},
+  },
+};
+
+export function runScreenshot() {
+  return capture(false);
+}
+
+export function runFullScreenshot() {
+  return capture(true);
+}
+
+function capture(fullPage: boolean) {
   return withActivePage(async (page) => {
-    const buffer = await page.screenshot({ type: "png" });
+    const buffer = await page.screenshot({ type: "png", fullPage });
     return {
       content: [
         {

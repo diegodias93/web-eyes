@@ -5,25 +5,28 @@ import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
-import { screenshotTool, runScreenshot } from "./tools/screenshot.js";
+import { screenshotTool, runScreenshot, fullScreenshotTool, runFullScreenshot } from "./tools/screenshot.js";
 import { textTool, runText } from "./tools/text.js";
 import { domTool, runDom } from "./tools/dom.js";
 import { openTool, runOpen } from "./tools/open.js";
+import { openUrlTool, runOpenUrl } from "./tools/navigate.js";
 import { watchTool, runWatch } from "./tools/watch.js";
 
-const tools = [openTool, textTool, screenshotTool, domTool, watchTool];
+const tools = [openTool, openUrlTool, textTool, screenshotTool, fullScreenshotTool, domTool, watchTool];
 
-const handlers: Record<string, () => Promise<any>> = {
+const handlers: Record<string, (args: any) => Promise<any>> = {
   [openTool.name]: runOpen,
+  [openUrlTool.name]: runOpenUrl,
   [textTool.name]: runText,
   [screenshotTool.name]: runScreenshot,
+  [fullScreenshotTool.name]: runFullScreenshot,
   [domTool.name]: runDom,
 };
 
 const server = new Server(
   {
     name: "web-eyes",
-    version: "1.0.1",
+    version: "1.1.0",
   },
   {
     capabilities: {
@@ -59,7 +62,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request, extra) => {
         isError: true,
       };
     }
-    return await handler();
+    return await handler(request.params.arguments);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return {
