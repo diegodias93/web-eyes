@@ -1,0 +1,50 @@
+{
+  "name": "@diegodias93/web-eyes",
+  "version": "1.1.0",
+  "description": "MCP server that gives Claude Code eyes on a Chrome tab — read clean text, screenshot, or DOM. Includes a hands-free watch mode with clickable buttons in the page.",
+  "type": "module",
+  "bin": {
+    "web-eyes": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "node ../scripts/smoke-mcp.mjs",
+    "prepare-plugin": "node ../scripts/prepare-plugin.mjs",
+    "prepublishOnly": "npm run build"
+  },
+  "author": {
+    "name": "Diego Dias",
+    "url": "https://www.newlevel.com.br"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/diegodias93/web-eyes.git"
+  },
+  "keywords": [
+    "mcp",
+    "claude-code",
+    "browser",
+    "chrome",
+    "screenshot",
+    "dom",
+    "playwright"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@mozilla/readability": "^0.5.0",
+    "pdfjs-dist": "^6.1.200",
+    "playwright-core": "^1.61.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}

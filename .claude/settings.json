@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(pwd)",
+      "Bash(node:*)",
+      "Bash(npm run:*)",
+      "Bash(npm test:*)",
+      "Bash(npm ci)",
+      "Bash(npx tsc:*)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(t['type'],'|',t['url'][:90]\\) for t in d if t['type']=='page']\")",
+      "Bash(grep -E \"pdf\\\\.\\(m?js\\)$\")",
+      "Bash(node dist/index.js)",
+      "Bash(python -c 'import sys,json *)",
+      "Bash(npm access *)",
+      "Bash(where node *)",
+      "Bash(where npx *)",
+      "Bash(npx --version)",
+      "Bash(tar -xzf diegodias93-web-eyes-1.0.8.tgz)",
+      "Bash(gh issue *)",
+      "Bash(find /c/Users/Diego/AppData/Local/Temp/claude/c--Users-Diego-Desktop-github-look-watch/66fae15f-8df1-494e-b674-496d4076f3a2/scratchpad/plugin-build/node_modules -iname *napi-rs* -o -iname *canvas*)",
+      "Bash(cp -r /c/Users/Diego/AppData/Local/Temp/claude/c--Users-Diego-Desktop-github-look-watch/66fae15f-8df1-494e-b674-496d4076f3a2/scratchpad/plugin-build/dist /c/Users/Diego/Desktop/github/look-watch/web-eyes/plugin/dist)",
+      "Bash(cp -r /c/Users/Diego/AppData/Local/Temp/claude/c--Users-Diego-Desktop-github-look-watch/66fae15f-8df1-494e-b674-496d4076f3a2/scratchpad/plugin-build/node_modules /c/Users/Diego/Desktop/github/look-watch/web-eyes/plugin/node_modules)",
+      "Bash(node \"/c/Users/Diego/AppData/Local/Temp/claude/c--Users-Diego-Desktop-github-look-watch/66fae15f-8df1-494e-b674-496d4076f3a2/scratchpad/mcp_plugin_test.js\")",
+      "Bash(npm root *)",
+      "Bash(node scripts/prepare-plugin.mjs)",
+      "Bash(node scripts/smoke-mcp.mjs)",
+      "Bash(node e2e.mjs)"
+    ],
+    "deny": [
+      "Bash(git push:*)",
+      "Bash(git commit:*)",
+      "Bash(git reset:*)",
+      "Bash(git rebase:*)",
+      "Bash(git merge:*)",
+      "Bash(git checkout:*)",
+      "Bash(git switch:*)",
+      "Bash(git restore:*)",
+      "Bash(git stash:*)",
+      "Bash(git clean:*)",
+      "Bash(git cherry-pick:*)",
+      "Bash(git add:*)",
+      "Bash(git rm:*)",
+      "Bash(git mv:*)",
+      "Bash(git tag:*)",
+      "Bash(git worktree:*)",
+      "Bash(git pull:*)",
+      "Bash(git apply:*)",
+      "Bash(git am:*)",
+      "Bash(git revert:*)",
+      "Bash(git update-ref:*)",
+      "Bash(git filter-branch:*)",
+      "Bash(git fast-import:*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/load_brain.js\"",
+            "statusMessage": "Carregando BRIEFING + Brain..."
+          }
+        ]
+      }
+    ]
+  },
+  "autoMemoryEnabled": false
+}

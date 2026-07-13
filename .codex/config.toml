@@ -1,0 +1,3 @@
+[mcp_servers.web-eyes]
+command = "node"
+args = ["c:/Users/Diego/Desktop/Claude Monitor/dd-web-eyes-mcp/dist/index.js"]

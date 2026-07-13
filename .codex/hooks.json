@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/load_brain.js\"",
+            "statusMessage": "Carregando BRIEFING + Brain..."
+          }
+        ]
+      }
+    ]
+  }
+}

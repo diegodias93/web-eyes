@@ -1,0 +1,2 @@
+# Normaliza fim de linha — evita diffs espurios de CRLF/LF entre maquinas.
+* text=auto
