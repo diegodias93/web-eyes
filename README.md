@@ -133,7 +133,22 @@ A healthy run ends with `✓ MCP handshake: initialize -> tools/list`. Anything 
 
 1. **Node is missing or too old.** Web Eyes needs **Node.js 20 LTS or newer** (its PDF support pulls in `pdfjs-dist` v6, which won't load on older Node). Check with `node -v`. If it's below 20 — or `node` isn't found at all — install Node 20+ and **fully restart** your terminal/editor (see the Requirements note above).
 
-2. **`node` isn't on the PATH Claude Code inherited.** Claude Code spawns the server with a bare `node`. If Claude Code (or the editor hosting it) was already running when you installed Node, it captured the old `PATH` and can't find `node`. Fully quit and reopen Claude Code (or reboot).
+2. **`node` isn't on the PATH Claude Code inherited.** Claude Code spawns the server with a bare `node`. If Claude Code (or the editor hosting it) was already running when you installed Node, it captured the old `PATH` and can't find `node`. The tell-tale sign is this exact line in the debug log (see below): `'node' is not recognized as an internal or external command` (or your OS's localized equivalent). Fully quit and reopen Claude Code (or reboot) so it picks up the current `PATH`.
+
+   **If a full restart still doesn't fix it** — some editors (notably VS Code) can launch with a `PATH` that never had Node, and reopening won't help — point the plugin at your Node binary by its **absolute path** instead of the bare `node`. Edit `plugin/.mcp.json` and replace the command:
+
+   ```json
+   {
+     "mcpServers": {
+       "web-eyes": {
+         "command": "C:/Program Files/nodejs/node.exe",
+         "args": ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"]
+       }
+     }
+   }
+   ```
+
+   Use *your* Node path there (find it with `where node` on Windows, or `which node` on macOS/Linux). This sidesteps the `PATH` entirely. Note it's **machine-specific** — an absolute path won't work on someone else's setup, so keep it local and don't commit it. To surface the underlying `'node' not recognized` error yourself, run `claude --debug --debug-file mcp-debug.log mcp list` and search the log for `web-eyes`.
 
 3. **Dependencies didn't come with the clone.** As a plugin, the server runs from `plugin/dist/` with its `plugin/node_modules/` — both are committed, so a plain `git clone` already has everything. If you cloned only part of the repo, or the bundle looks incomplete, regenerate it from the repo root with `node scripts/prepare-plugin.mjs` (needs `npm`).
 
