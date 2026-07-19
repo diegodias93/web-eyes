@@ -13,4 +13,8 @@ camada: back-end
 **2. `open_url` NÃO é um botão do look-watch (só tool + skill `look-go`).**
 **Por quê:** no modo escuta o usuário JÁ está na aba que quer mostrar — se quisesse outra URL, ele mesmo navega no Chrome. Um botão "Go" ali seria redundante. `open_url` existe para quando **o Claude toma iniciativa** (não é um clique do usuário), então não cabe no overlay. Só o "Full" (screenshot da página inteira) virou botão novo — porque é uma captura como Text/Image/Dom, sobre a aba que o usuário já está vendo.
 
+**3. Só `http:`/`https:` — `parseHttpUrl()` recusa o resto (2026-07-19).**
+**Por quê:** `open_url` é a única tool onde o Claude escolhe o destino, e as capturas leem o que estiver aberto. Sem validação, um `file:///C:/Users/.../.ssh/id_rsa` (ou `chrome://`, `data:`) passava direto pro `page.goto` — o Claude abria e em seguida capturava arquivo local. A validação é de segurança, não cosmética: **não relaxar** pra "aceitar file:// que é útil pra testar".
+**A pegadinha (já cometida, não repetir):** a checagem ingênua `/^[a-z][a-z0-9+.-]*:/` marca **`localhost:3000` como tendo esquema** (`localhost:`) e o rejeita — quebrando justamente o caso que a descrição da tool promete. O regex tem que exigir `://`. Esquemas sem barras que importam (`data:`, `javascript:`) caem no caminho de "host nu", viram `http://data:...`, e são recusados de qualquer jeito por não formarem host válido. Coberto por `scripts/test-url.mjs` (14 casos) — se mexer na regra, rode.
+
 Relacionado: [Modo-escuta /look-watch](modo-escuta-watch.md), [Conexão Chrome via CDP](conexao-chrome-cdp.md).

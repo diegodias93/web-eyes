@@ -14,11 +14,11 @@ e os arquivos individuais **sob demanda** — só quando a descrição abaixo in
 
 ## Back-end
 - [Conexão Chrome via CDP](conexao-chrome-cdp.md) — porta 9222, auto-launch do Chrome, e por que o perfil é dedicado (`web-eyes-chrome-debug` sob o temp do SO) e não o normal (segurança: não expor todas as sessões logadas atrás da porta)
-- [Estrutura de plugin](estrutura-plugin.md) — estrutura do plugin/marketplace, os 4 nomes sob `diegodias93` (repo/mkt/plugin/npm), por que NÃO empacotar o Chromium, e por que o `.mcp.json` usa `node` (não `npx`) — bug #58510 do Claude Code no Windows
+- [Estrutura de plugin](estrutura-plugin.md) — estrutura do plugin/marketplace, os 4 nomes sob `diegodias93` (repo/mkt/plugin/npm), por que NÃO empacotar o Chromium, por que o `.mcp.json` usa `node` (não `npx`) — bug #58510 no Windows — e por que `plugin/dist` + `plugin/node_modules` são COMMITADOS (+ o `.gitignore` aninhado que quebrava isso)
 - [Captura de texto via Readability](captura-texto-readability.md) — por que capture_text usa @mozilla/readability injetada no browser (não jsdom, não limpeza por tags) e por que launchChrome checa existsSync antes do spawn (bug async do Windows)
 - [Captura de PDF](captura-pdf.md) — como capture_text extrai PDF (mesmo gatilho, sem botão novo): detecção por contentType, bytes via page.request (sessão), pdfjs legacy sem worker + pathToFileURL; escaneado avisa e sugere /look-image
-- [Modo-escuta /look-watch](modo-escuta-watch.md) — botões no Chrome + loop; as 4 armadilhas (binding-não-fetch por CSP, overlay por polling-não-eventos por swap de target, heartbeat de progresso, captura reusada)
-- [Navegação open_url](navegacao-open-url.md) — por que open_url abre ABA NOVA (não navega a ativa: não sequestrar a sessão do usuário) e por que "Go" NÃO é botão do look-watch (é iniciativa do Claude, não clique do usuário)
+- [Modo-escuta /look-watch](modo-escuta-watch.md) — botões no Chrome + loop; as 5 armadilhas (binding-não-fetch por CSP, overlay por polling-não-eventos por swap de target, heartbeat de progresso, captura na Page do clique — NÃO na aba ativa —, teclas em window+capture)
+- [Navegação open_url](navegacao-open-url.md) — por que open_url abre ABA NOVA (não navega a ativa: não sequestrar a sessão do usuário), por que "Go" NÃO é botão do look-watch (é iniciativa do Claude, não clique do usuário) e por que só aceita http/https (bloqueia file://; cuidado: `localhost:3000` não é esquema)
 
 ## Importante
 <!-- Decisões e restrições que valem para todo o projeto, independente de camada -->

@@ -16,7 +16,13 @@ Arquitetura: `tools/overlay.ts` (UI em Shadow DOM) + `tools/watch.ts` (tool `wat
 
 3. **Heartbeat de progresso pra não bater no idle timeout.** A tool `watch` bloqueia esperando o clique. A partir do Claude Code 2.1.187, uma tool sem resposta NEM progresso por 5 min é abortada. Então o `watch` emite `notifications/progress` a cada 30s (via `extra.sendNotification` no index.ts, usando o `progressToken` do request). Mantém a escuta viva indefinidamente, em silêncio. Mesmo em versões antigas (sem o idle timeout) mantemos o heartbeat — robustez pra quando o usuário atualizar.
 
-4. **Captura reusa runText/runScreenshot/runDom.** No clique, o `watch` chama a função de captura correspondente (que usa getActivePage = aba em foco = a aba clicada). Reuso, não duplicação da lógica de Readability/screenshot.
+4. **Captura reusa runText/runScreenshot/runDom — mas recebendo a Page do clique.** No clique, o `watch` chama a função de captura correspondente. Reuso, não duplicação da lógica de Readability/screenshot.
+
+   **CORREÇÃO 2026-07-19 (esta armadilha estava documentada errada — não reverter):** a versão anterior desta linha dizia que a captura "usa getActivePage = aba em foco = a aba clicada". **A premissa é falsa** e era um bug de vazamento: entre o clique e a captura, o `runWatch` descartava a página de origem e reprocurava a aba ativa — e a captura, via `withActivePage`, abria OUTRA conexão CDP e repetia a heurística de novo. Se o usuário trocasse de aba nesse intervalo (que inclui o round-trip do binding e a injeção do overlay), o Claude capturava — e mostrava — o conteúdo de uma aba que o usuário **não** clicou.
+
+   **Como é agora:** a binding preserva a `Page` de origem (`src.page`, o 1º argumento do callback do `exposeBinding`, que antes era ignorado como `_src`) num `SourcedEvent = {event, page}`. `withActivePage(fn, page?)` ganhou um 2º parâmetro opcional: quando vem preenchido, roda direto naquela Page e **pula tanto a conexão nova quanto a heurística**; quando não vem, mantém o comportamento antigo (é o caminho das skills `/look-text` etc., que chamam as tools direto e aí a aba em foco é mesmo a certa). As 4 capturas aceitam `target?: Page` e repassam.
+
+   Dois porquês que não dá pra ler no código: (a) o parâmetro é **opcional** de propósito — obrigatório quebraria as chamadas diretas das skills, que não têm Page nenhuma pra passar; (b) o ganho de reusar a `sharedBrowser` (uma conexão a menos por captura) é **efeito colateral, não o motivo** — o motivo é correção, não performance. Não "simplifique" voltando a derivar a aba ativa dentro da captura: o bug volta, e ele é silencioso (o resultado parece válido, só é da aba errada).
 
 ## Caixa de texto no overlay (conversar sem stopar — o porquê arquitetural)
 
