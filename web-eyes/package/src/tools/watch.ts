@@ -1,4 +1,4 @@
-import { sharedBrowser, closeSharedBrowser, pickActivePage } from "../browser.js";
+import { sharedBrowser, closeSharedBrowser } from "../browser.js";
 import {
   injectOverlay,
   removeOverlay,
@@ -32,8 +32,14 @@ export const watchTool = {
 //    *current* wait lives in a module slot the binding always reads;
 //  - an event that lands while no wait is active (the gap between re-arms, e.g.
 //    right after Esc) is buffered here and delivered to the next waitForEvent.
-let pendingResolve: ((e: WatchEvent) => void) | null = null;
-let bufferedEvent: WatchEvent | null = null;
+// The event is carried together with the Page it came from: capturing must run
+// against the tab the user actually clicked, not against whatever tab is focused
+// by the time we get around to capturing (the user may have switched meanwhile,
+// which would capture — and leak — the wrong page).
+type SourcedEvent = { event: WatchEvent; page: Page };
+
+let pendingResolve: ((e: SourcedEvent) => void) | null = null;
+let bufferedEvent: SourcedEvent | null = null;
 // The browser instance the binding is currently exposed on. If the connection
 // drops and sharedBrowser() reconnects, this won't match and we re-expose —
 // otherwise the new connection's buttons would be dead.
@@ -50,7 +56,7 @@ let boundBrowser: unknown = null;
 export async function waitForEvent(
   onHeartbeat?: () => void,
   signal?: AbortSignal
-): Promise<WatchEvent> {
+): Promise<SourcedEvent> {
   const browser = await sharedBrowser();
   const ctx = browser.contexts()[0];
 
@@ -60,23 +66,26 @@ export async function waitForEvent(
   if (boundBrowser !== browser) {
     boundBrowser = browser;
     await ctx
-      .exposeBinding(CLICK_BINDING, (_src, e: WatchEvent) => {
-        if (pendingResolve) pendingResolve(e);
-        else bufferedEvent = e; // landed in the gap — deliver on next wait
+      .exposeBinding(CLICK_BINDING, (src, e: WatchEvent) => {
+        // src.page is the tab the click/message came from — kept so the capture
+        // below runs on exactly that tab.
+        const sourced = { event: e, page: src.page };
+        if (pendingResolve) pendingResolve(sourced);
+        else bufferedEvent = sourced; // landed in the gap — deliver on next wait
       })
       .catch(() => {});
   }
 
   let poll: NodeJS.Timeout;
   let beat: NodeJS.Timeout;
-  const event = await new Promise<WatchEvent>((resolve, reject) => {
+  const event = await new Promise<SourcedEvent>((resolve, reject) => {
     let settled = false;
     const cleanup = () => {
       pendingResolve = null;
       clearInterval(poll);
       clearInterval(beat);
     };
-    const finish = (e: WatchEvent) => {
+    const finish = (e: SourcedEvent) => {
       if (settled) return;
       settled = true;
       cleanup();
@@ -137,12 +146,6 @@ export async function waitForEvent(
   return event;
 }
 
-/** The focused tab (the one the user clicked) on the shared connection. */
-async function activePage(): Promise<Page> {
-  const browser = await sharedBrowser();
-  return pickActivePage(browser);
-}
-
 /** Tears down the overlay on every tab and drops the shared connection (on stop). */
 async function stopWatch(): Promise<void> {
   try {
@@ -161,7 +164,7 @@ async function stopWatch(): Promise<void> {
 }
 
 export async function runWatch(onHeartbeat?: () => void, signal?: AbortSignal) {
-  const event = await waitForEvent(onHeartbeat, signal);
+  const { event, page: source } = await waitForEvent(onHeartbeat, signal);
 
   // A typed message: just hand the text back so Claude can reply. No capture, and
   // the overlay stays untouched — the loop keeps going (the skill re-arms watch).
@@ -186,9 +189,13 @@ export async function runWatch(onHeartbeat?: () => void, signal?: AbortSignal) {
     };
   }
 
+  // The tab the click came from — NOT "whatever tab is active now". Re-deriving
+  // the active tab here would race with the user switching tabs between the click
+  // and the capture, which would capture the wrong page.
+  const page = source.isClosed() ? null : source;
+
   // Show the pulsing "…" on the clicked tab so the user sees Claude is looking;
   // it stays up through processing and is cleared by the next sweep (on re-arm).
-  const page = await activePage().catch(() => null);
   if (page) await setOverlayBusyOn(page, action).catch(() => {});
 
   // Hide the overlay just around the capture so it never lands in the result —
@@ -203,7 +210,9 @@ export async function runWatch(onHeartbeat?: () => void, signal?: AbortSignal) {
       : action === "full"
       ? runFullScreenshot
       : runDom;
-  const result = await capture();
+  // Passing the page pins the capture to the clicked tab (and reuses the shared
+  // connection instead of opening another one).
+  const result = await capture(page ?? undefined);
   if (page) await setOverlayHiddenOn(page, false).catch(() => {});
   return {
     content: [

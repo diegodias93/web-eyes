@@ -1,4 +1,5 @@
 import { createRequire } from "node:module";
+import type { Page } from "playwright-core";
 import { withActivePage } from "../browser.js";
 import { isPdfPage, extractPdf } from "./pdf.js";
 
@@ -19,7 +20,7 @@ export const textTool = {
   },
 };
 
-export async function runText() {
+export async function runText(target?: Page) {
   return withActivePage(async (page) => {
     const url = page.url();
     const title = await page.title();
@@ -91,5 +92,5 @@ export async function runText() {
     return {
       content: [{ type: "text" as const, text: out }],
     };
-  });
+  }, target);
 }

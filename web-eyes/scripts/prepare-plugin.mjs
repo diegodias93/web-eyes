@@ -3,8 +3,11 @@
 //
 // The plugin ships `dist/` (compiled) AND `node_modules` (prod deps) embedded,
 // because Claude Code spawns the MCP server with `node` directly — not `npx` —
-// to dodge the Windows spawn-ENOENT bug (#58510). Neither folder is committed
-// (both are git-ignored), so this script regenerates them from `package/`.
+// to dodge the Windows spawn-ENOENT bug (#58510). Both folders ARE committed
+// (web-eyes/.gitignore re-includes them): Claude Code copies the plugin into its
+// cache and runs it there without building or installing, so anything not
+// committed won't exist for the user. This script regenerates them from
+// `package/`; commit the result.
 //
 // Steps: build the package -> copy dist -> install prod deps (no optional/dev)
 // -> report sizes. Run from the repo root: `node scripts/prepare-plugin.mjs`.
@@ -84,5 +87,7 @@ console.log(`  dist/          ${mb(distSize)}`);
 console.log(`  node_modules/  ${mb(nmSize)}`);
 console.log(`  total          ${mb(distSize + nmSize)}`);
 console.log("────────────────────────────────────────");
-console.log("\n✓ Plugin prepared. dist/ and node_modules/ are git-ignored —");
-console.log("  publish the plugin from these files (they are regenerated, not committed).");
+console.log("\n✓ Plugin prepared. dist/ and node_modules/ are COMMITTED (see web-eyes/.gitignore) —");
+console.log("  Claude Code copies the plugin to its cache and runs it there, with no build");
+console.log("  or install step, so review and commit these files for the plugin to work on a");
+console.log("  fresh clone: `git status web-eyes/plugin`.");

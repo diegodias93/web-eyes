@@ -1,3 +1,4 @@
+import type { Page } from "playwright-core";
 import { withActivePage } from "../browser.js";
 
 export const domTool = {
@@ -11,7 +12,7 @@ export const domTool = {
   },
 };
 
-export async function runDom() {
+export async function runDom(target?: Page) {
   return withActivePage(async (page) => {
     const url = page.url();
     const html = await page.content();
@@ -23,5 +24,5 @@ export async function runDom() {
         },
       ],
     };
-  });
+  }, target);
 }

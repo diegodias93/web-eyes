@@ -1,3 +1,4 @@
+import type { Page } from "playwright-core";
 import { withActivePage } from "../browser.js";
 
 export const screenshotTool = {
@@ -23,15 +24,15 @@ export const fullScreenshotTool = {
   },
 };
 
-export function runScreenshot() {
-  return capture(false);
+export function runScreenshot(target?: Page) {
+  return capture(false, target);
 }
 
-export function runFullScreenshot() {
-  return capture(true);
+export function runFullScreenshot(target?: Page) {
+  return capture(true, target);
 }
 
-function capture(fullPage: boolean) {
+function capture(fullPage: boolean, target?: Page) {
   return withActivePage(async (page) => {
     const buffer = await page.screenshot({ type: "png", fullPage });
     return {
@@ -43,5 +44,5 @@ function capture(fullPage: boolean) {
         },
       ],
     };
-  });
+  }, target);
 }

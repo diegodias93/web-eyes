@@ -1,3 +1,15 @@
 node_modules/
 dist/
 *.log
+
+# EXCEPTION — the plugin ships its compiled dist AND its prod deps committed.
+# Claude Code copies plugins into ~/.claude/plugins/cache and spawns
+# `node dist/index.js` there, so it never runs a build or an install on the
+# user's machine: whatever isn't committed simply won't exist for them.
+# Re-included with a rule per level, because git will not descend into an
+# excluded directory — un-ignoring a file inside it requires un-ignoring each
+# parent directory first. Regenerate the contents with scripts/prepare-plugin.mjs.
+!plugin/dist/
+!plugin/dist/**
+!plugin/node_modules/
+!plugin/node_modules/**

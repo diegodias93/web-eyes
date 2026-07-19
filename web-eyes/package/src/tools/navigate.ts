@@ -18,6 +18,28 @@ export const openUrlTool = {
   },
 };
 
+/**
+ * Parses a user-supplied URL, returning it only if it's http/https — otherwise
+ * null. A bare host gets http:// before parsing; a string that already has a
+ * scheme keeps it, so a non-http scheme is rejected instead of being disguised.
+ */
+export function parseHttpUrl(raw: string): string | null {
+  // "scheme://" — the "//" matters: without it, "localhost:3000" would parse as
+  // scheme "localhost:" and get rejected as non-http. Schemes that legitimately
+  // omit the slashes (data:, javascript:) are the ones we reject anyway, so
+  // treating them as a bare host is harmless — they fail the http check below
+  // once prefixed (e.g. "http://data:text/html,…" has no valid host).
+  const hasScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw);
+  try {
+    const parsed = new URL(hasScheme ? raw : `http://${raw}`);
+    return parsed.protocol === "http:" || parsed.protocol === "https:"
+      ? parsed.href
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function runOpenUrl(args: { url?: string }) {
   const raw = (args?.url || "").trim();
   if (!raw) {
@@ -27,8 +49,22 @@ export async function runOpenUrl(args: { url?: string }) {
     };
   }
   // Bare hosts ("localhost:3000", "example.com") get http:// so goto doesn't
-  // treat them as a file path or a search.
-  const url = /^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `http://${raw}`;
+  // treat them as a file path or a search. Anything that already carries a scheme
+  // is parsed as-is and must turn out to be http/https: file://, chrome:// and
+  // data: would let a capture reach local files, so they're rejected here rather
+  // than handed to page.goto.
+  const url = parseHttpUrl(raw);
+  if (!url) {
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text: `Refused to open "${raw}": only http:// and https:// URLs are allowed.`,
+        },
+      ],
+      isError: true,
+    };
+  }
 
   // Own CDP connection, closed on the way out — close() only DISCONNECTS, it
   // never closes the user's Chrome or the tab we just opened (see browser.ts).

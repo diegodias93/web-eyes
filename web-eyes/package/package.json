@@ -12,7 +12,8 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "test": "node ../scripts/smoke-mcp.mjs",
+    "pretest": "npm run build",
+    "test": "node ../scripts/smoke-mcp.mjs && node ../scripts/test-url.mjs",
     "prepare-plugin": "node ../scripts/prepare-plugin.mjs",
     "prepublishOnly": "npm run build"
   },
@@ -39,7 +40,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "@mozilla/readability": "^0.5.0",
+    "@mozilla/readability": "^0.6.0",
     "pdfjs-dist": "^6.1.200",
     "playwright-core": "^1.61.1"
   },

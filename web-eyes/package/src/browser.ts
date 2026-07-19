@@ -119,11 +119,19 @@ export async function pickActivePage(browser: Browser): Promise<Page> {
  * If no Chrome is listening on the debug port, it launches one automatically
  * (with the flag + the dedicated profile) and waits for it to come up.
  */
-export async function withActivePage<T>(fn: (page: Page) => Promise<T>): Promise<T> {
+export async function withActivePage<T>(
+  fn: (page: Page) => Promise<T>,
+  page?: Page
+): Promise<T> {
+  // A caller that already knows WHICH page it wants (the watch loop knows the tab
+  // the user clicked) passes it in: we run against that exact tab and skip both
+  // the extra CDP connection and the active-tab heuristic — re-running the
+  // heuristic here could land on a different tab if the user switched in between.
+  if (page) return fn(page);
+
   const browser = await connectBrowser();
   try {
-    const page = await pickActivePage(browser);
-    return await fn(page);
+    return await fn(await pickActivePage(browser));
   } finally {
     await browser.close().catch(() => {});
   }
