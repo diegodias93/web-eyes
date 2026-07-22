@@ -35,7 +35,12 @@
       "Bash(npm root *)",
       "Bash(node scripts/prepare-plugin.mjs)",
       "Bash(node scripts/smoke-mcp.mjs)",
-      "Bash(node e2e.mjs)"
+      "Bash(node e2e.mjs)",
+      "Bash(npm audit *)",
+      "Bash(node -p \"require\\('@mozilla/readability/package.json'\\).version\")",
+      "Bash(node \"C:/Users/Diego/AppData/Local/Temp/claude/c--Users-Diego-Desktop-github-look-watch/ae8ee2e4-46b9-40da-8492-6fffc102432b/scratchpad/retest-text.mjs\" \"https://en.wikipedia.org/wiki/Model_Context_Protocol\")",
+      "Bash(node web-eyes/scripts/prepare-plugin.mjs)",
+      "Bash(node -p \"require\\('./web-eyes/plugin/node_modules/@mozilla/readability/package.json'\\).version\")"
     ],
     "deny": [
       "Bash(git push:*)",
